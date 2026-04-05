@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vishwalta College - AI Assistant</title>
+    <!-- Markdown rendering library -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #06b6d4 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+            animation: float 15s ease-in-out infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+
+            50% {
+                transform: translate(-20px, 20px) rotate(10deg);
+            }
+        }
+
+        .chat-container {
+            width: 90%;
+            max-width: 1000px;
+            height: 92vh;
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.25), 0 10px 40px rgba(0, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            z-index: 1;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #0891b2 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            position: relative;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex: 1;
+        }
+
+        .college-logo {
+            width: 55px;
+            height: 55px;
+            border-radius: 12px;
+
+            padding: 3px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            object-fit: contain;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+
+
+        .header-branding h1 {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            line-height: 1.2;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-branding p {
+            font-size: 13px;
+            opacity: 0.9;
+            font-weight: 400;
+            margin-top: 2px;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+            display: inline-block;
+            margin-right: 2px;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .language-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 8px 14px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .language-selector label {
+            font-size: 16px;
+        }
+
+        .language-selector select {
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .language-selector select option {
+            background: #1e3a8a;
+            color: white;
+        }
+
+        .language-selector select:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.3);
+            border-color: white;
+        }
+
+        .language-selector select:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 25px;
+            background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 12px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .user-message .message-avatar {
+            background: linear-gradient(135deg, #2563eb, #0891b2);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .ai-message .message-avatar {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .message-content {
+            flex: 1;
+            background: white;
+            padding: 15px 18px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            max-width: 70%;
+        }
+
+        .user-message {
+            flex-direction: row-reverse;
+        }
+
+        .user-message .message-content {
+            background: linear-gradient(135deg, #2563eb, #0891b2);
+            color: white;
+            box-shadow: 0 4px 16px rgba(37, 99, 235, 0.25);
+        }
+
+        /* Markdown content styling */
+        .message-content h1,
+        .message-content h2,
+        .message-content h3 {
+            margin: 12px 0 8px 0;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+
+        .message-content h2 {
+            font-size: 1.25em;
+            color: #2563eb;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 4px;
+        }
+
+        .message-content h3 {
+            font-size: 1.1em;
+            color: #0891b2;
+        }
+
+        .highlight-question {
+            background: rgba(37, 99, 235, 0.08);
+            /* Very light blue attractive background */
+            color: #1d4ed8;
+            /* Dark, pop-out Blue text */
+            padding: 16px 20px;
+            border-radius: 12px;
+            font-weight: 800;
+            /* Extra bold heading style */
+            font-size: 1.15em;
+            /* Larger size to look like a heading */
+            margin-top: 20px;
+            /* Force it to the bottom with margin */
+            border-left: 5px solid #2563eb;
+            /* Prominent blue strip */
+            border-bottom: 2px solid rgba(37, 99, 235, 0.2);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+            letter-spacing: 0.3px;
+        }
+
+        .message-content p {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+
+        .message-content strong {
+            font-weight: 700;
+            color: #2563eb;
+        }
+
+        .user-message .message-content strong {
+            color: white;
+        }
+
+        .user-message .message-content h2,
+        .user-message .message-content h3 {
+            color: white;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .message-content ul,
+        .message-content ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        .message-content li {
+            margin: 5px 0;
+            line-height: 1.5;
+        }
+
+        .message-content code {
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .message-content blockquote {
+            border-left: 4px solid #2563eb;
+            padding-left: 12px;
+            margin: 10px 0;
+            color: #666;
+            font-style: italic;
+        }
+
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 15px;
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: #6366f1;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+
+            0%,
+            60%,
+            100% {
+                transform: translateY(0);
+            }
+
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .suggestions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .suggestion-btn {
+            padding: 8px 16px;
+            background: white;
+            border: 2px solid #2563eb;
+            color: #2563eb;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .suggestion-btn:hover {
+            background: #2563eb;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .inquiry-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: 10px;
+            animation: slideIn 0.5s ease;
+        }
+
+        .chat-input-area {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .chat-input-container {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 14px 20px;
+            border: 2px solid #e5e7eb;
+            border-radius: 25px;
+            font-size: 15px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .chat-input:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+        }
+
+        .send-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #2563eb, #0891b2);
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 16px rgba(37, 99, 235, 0.3);
+        }
+
+        .send-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 24px rgba(37, 99, 235, 0.5);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .welcome-screen {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6b7280;
+        }
+
+        .welcome-screen h2 {
+            font-size: 32px;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, #2563eb, #0891b2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 800;
+        }
+
+        .welcome-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-top: 30px;
+            max-width: 100%;
+        }
+
+        .welcome-card {
+            background: white;
+            padding: 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .welcome-card:hover {
+            transform: translateY(-5px);
+            border-color: #2563eb;
+            box-shadow: 0 10px 30px rgba(37, 99, 235, 0.25);
+        }
+
+        .welcome-card-icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .welcome-card-title {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+
+        .welcome-card-desc {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .inquiry-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            background: #10b981;
+            color: white;
+            border-radius: 20px;
+            font-size: 13px;
+            margin-top: 10px;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        
+
+        /* Scrollbar styling */
+        .chat-messages::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: #e2e8f0;
+            border-radius: 10px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #2563eb, #0891b2);
+            border-radius: 10px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #1e40af, #0e7490);
+        }
+
+        /* Mobile responsive for templates */
+        @media (max-width: 768px) {
+            .welcome-cards {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+
+            .welcome-card {
+                padding: 12px;
+            }
+
+            .welcome-card-icon {
+                font-size: 24px;
+            }
+
+            .welcome-card-title {
+                font-size: 12px;
+            }
+
+            .welcome-card-desc {
+                font-size: 11px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .welcome-screen h2 {
+                font-size: 24px;
+            }
+
+            .welcome-screen p {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="header-left">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Vishwalta College Logo"
+                    class="college-logo">
+                <div class="header-branding">
+                    <h1>
+                        <span class="status-indicator"></span>
+                        Vishwalta College
+                    </h1>
+                    <p>🤖 AI-Powered Admission Assistant</p>
+                </div>
+            </div>
+            <div class="header-controls">
+                <div class="language-selector">
+                    <label for="language-select">🌐</label>
+                    <select id="language-select" onchange="changeLanguage()">
+                        <option value="marathi_english" selected>मराठी + English</option>
+                        <option value="english">English</option>
+                        <option value="marathi">मराठी</option>
+                        <option value="hindi">हिंदी</option>
+                        <option value="auto">Auto Detect</option>
+                    </select>
+                </div>
+                
+            </div>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="welcome-screen" id="welcomeScreen">
+                <h2>Welcome to Vishwalta College! 🎓</h2>
+                <p>I'm your AI admission counselor. I can help you with information about courses, admissions, and
+                    campus facilities.</p>
+                <p style="margin-top: 10px;"><strong>Let's start the conversation!</strong> What would you like to know?
+                </p>
+
+                <!-- <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: center;">
+                    <button onclick="startFreshChat()" style="padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        ✨ Fresh Chat (New Session)
+                    </button>
+                </div> -->
+
+                <div class="welcome-cards">
+                    <div class="welcome-card" onclick="sendQuickMessage('What courses are available?')">
+                        <div class="welcome-card-icon">📚</div>
+                        <div class="welcome-card-title">Available Courses</div>
+                        <div class="welcome-card-desc">View all programs</div>
+                    </div>
+                    <div class="welcome-card" onclick="sendQuickMessage('Tell me about admission process')">
+                        <div class="welcome-card-icon">📝</div>
+                        <div class="welcome-card-title">Admission Process</div>
+                        <div class="welcome-card-desc">How to apply</div>
+                    </div>
+                    <div class="welcome-card" onclick="sendQuickMessage('Show me the campus')">
+                        <div class="welcome-card-icon">🏫</div>
+                        <div class="welcome-card-title">Campus Tour</div>
+                        <div class="welcome-card-desc">View facilities</div>
+                    </div>
+                    <div class="welcome-card" onclick="sendQuickMessage('Tell me about library facilities')">
+                        <div class="welcome-card-icon">📖</div>
+                        <div class="welcome-card-title">Library</div>
+                        <div class="welcome-card-desc">Books & resources</div>
+                    </div>
+                    <div class="welcome-card" onclick="sendQuickMessage('What are the fees for courses?')">
+                        <div class="welcome-card-icon">💰</div>
+                        <div class="welcome-card-title">Fee Structure</div>
+                        <div class="welcome-card-desc">Course fees</div>
+                    </div>
+                    <div class="welcome-card" onclick="sendQuickMessage('Tell me about placements')">
+                        <div class="welcome-card-icon">💼</div>
+                        <div class="welcome-card-title">Placements</div>
+                        <div class="welcome-card-desc">Career opportunities</div>
+                    </div>
+                    <div class="welcome-card" onclick="sendQuickMessage('What is the college contact information?')">
+                        <div class="welcome-card-icon">📞</div>
+                        <div class="welcome-card-title">Contact Us</div>
+                        <div class="welcome-card-desc">Phone & address</div>
+                    </div>
+                    <div class="welcome-card" onclick="sendQuickMessage('Tell me about hostel facilities')">
+                        <div class="welcome-card-icon">🏠</div>
+                        <div class="welcome-card-title">Hostel</div>
+                        <div class="welcome-card-desc">Accommodation</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-input-area">
+            <div class="chat-input-container">
+                <input type="text" class="chat-input" id="messageInput" placeholder="Type your message..."
+                    onkeypress="handleKeyPress(event)">
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api';
+        let sessionId = null;
+        let isTyping = false;
+        let inquiryCreated = false;
+        let selectedLanguage = 'marathi_english'; // Default language
+        let socket = null;
+        let streamingMessageDiv = null;
+        let streamingContent = null;
+        let streamingFullResponse = '';
+        let chatHistory = [];  // Store chat messages
+
+        // Change language preference
+        function changeLanguage() {
+            selectedLanguage = document.getElementById('language-select').value;
+
+
+            // Update placeholder based on language
+            const input = document.getElementById('messageInput');
+            const placeholders = {
+                'marathi_english': 'मराठी + English मध्ये message type करा...',
+                'english': 'Type your message...',
+                'marathi': 'तुमचा संदेश लिहा...',
+                'hindi': 'अपना संदेश लिखें...',
+                'auto': 'Type your message...'
+            };
+            input.placeholder = placeholders[selectedLanguage];
+        }
+
+        // Initialize session
+        async function initSession() {
+            try {
+                // PRIVACY FIX: By default, create NEW session for each page load
+                // (Old behavior: auto-load from localStorage - caused privacy issues in incognito mode)
+                // Users can click "Fresh Chat" button or use page back button to continue old session
+
+                // Always create a new session on first load
+                const response = await fetch(API_URL + '/session/create', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                sessionId = data.session_id;
+
+                // Store in localStorage for this session persistence
+                localStorage.setItem('clgchat_session_id', sessionId);
+                localStorage.removeItem('clgchat_history_' + sessionId); // Clear any old history for this ID
+                chatHistory = [];
+
+
+                initSocket();
+            } catch (error) {
+
+                // Fallback: generate client-side ID if server unreachable
+                sessionId = 'client_' + Date.now();
+                localStorage.setItem('clgchat_session_id', sessionId);
+                chatHistory = [];
+
+                initSocket();
+            }
+        }
+
+        // Start fresh chat - creates new session and clears old history
+        function startFreshChat() {
+
+
+            // Clear ALL localStorage data
+            localStorage.removeItem('clgchat_session_id');
+            const keys = Object.keys(localStorage);
+            keys.forEach(key => {
+                if (key.startsWith('clgchat_history_')) {
+                    localStorage.removeItem(key);
+                }
+            });
+
+            // Reset UI
+            chatHistory = [];
+            sessionId = null;
+
+            // Clear messages
+            const messagesContainer = document.getElementById('chatMessages');
+            messagesContainer.innerHTML = '<div class="welcome-screen" id="welcomeScreen"><h2>Welcome to Vishwalta College! 🎓</h2><p>I\'m your AI admission counselor. I can help you with information about courses, admissions, and campus facilities.</p><p style="margin-top: 10px;"><strong>Let\'s start the conversation!</strong> What would you like to know?</p><div style="margin-top: 15px; display: flex; gap: 10px; justify-content: center;"><button onclick="startFreshChat()" style="padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">✨ Fresh Chat (New Session)</button></div></div>';
+
+            // Initialize new session
+            initSession();
+        }
+
+        // Load chat history to DOM
+        function loadChatHistoryToDOM() {
+            // Hide welcome screen since we have chat history
+            const welcomeScreen = document.getElementById('welcomeScreen');
+            if (welcomeScreen) {
+                welcomeScreen.style.display = 'none';
+
+            }
+
+            const messagesContainer = document.getElementById('chatMessages');
+            messagesContainer.innerHTML = ''; // Clear first
+
+            chatHistory.forEach(msg => {
+                addMessage(msg.text, msg.type);
+            });
+
+        }
+
+        // Save chat history to localStorage
+        function saveChatHistory() {
+            if (sessionId) {
+                localStorage.setItem('clgchat_history_' + sessionId, JSON.stringify(chatHistory));
+            }
+        }
+
+        function initSocket() {
+            socket = io({
+                transports: ['websocket', 'polling'],
+                withCredentials: true
+            });
+
+            socket.on('connect', () => {
+            });
+
+            socket.on('disconnect', () => {
+                console.warn('⚠️ WebSocket disconnected at:', new Date().toLocaleTimeString());
+            });
+
+            socket.on('chat_token', (data) => {
+                if (!data || data.session_id !== sessionId || !streamingContent) return;
+                if (!data.token) return;
+
+                streamingFullResponse += data.token;
+                streamingContent.innerHTML = marked.parse(streamingFullResponse);
+                scrollToBottom();
+            });
+
+            socket.on('chat_done', (data) => {
+                if (!data || data.session_id !== sessionId) return;
+                finishSocketStreaming(data.metadata || {});
+            });
+
+            socket.on('chat_error', (data) => {
+                const err = data && data.error ? data.error : 'Unknown websocket error';
+
+                failSocketStreaming();
+            });
+        }
+
+        function startStreamingMessage() {
+            const messagesContainer = document.getElementById('chatMessages');
+            streamingMessageDiv = document.createElement('div');
+            streamingMessageDiv.className = 'message ai-message';
+            streamingMessageDiv.id = 'streamingMessage';
+
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            avatar.textContent = '🤖';
+
+            streamingContent = document.createElement('div');
+            streamingContent.className = 'message-content';
+            streamingContent.id = 'streamingContent';
+
+            streamingMessageDiv.appendChild(avatar);
+            streamingMessageDiv.appendChild(streamingContent);
+            messagesContainer.appendChild(streamingMessageDiv);
+            streamingFullResponse = '';
+        }
+
+        function finishSocketStreaming(metadata) {
+            hideTyping();
+
+            if (!streamingContent) {
+                addMessage('Sorry, I encountered an error. Please try again.', 'ai');
+                return;
+            }
+
+            const finalResponse = metadata.response || streamingFullResponse || 'Sorry, I encountered an error. Please try again.';
+            streamingContent.innerHTML = marked.parse(finalResponse);
+
+            // ✅ SAVE AI RESPONSE TO HISTORY (SOCKET.IO PATH)
+            saveAIResponseToHistory(finalResponse);
+
+            if (metadata.show_image) {
+                const imgInfo = metadata.show_image;
+                const imageDiv = document.createElement('div');
+                imageDiv.style.cssText = 'margin: 15px 0; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);';
+                imageDiv.innerHTML = `
+                    <img src="${imgInfo.image_path}" 
+                         alt="${imgInfo.title || 'Campus Image'}" 
+                         style="width: 100%; max-width: 500px; height: auto; display: block; border-radius: 12px;"
+                         crossorigin="anonymous"
+                         onerror="this.onerror=null; this.parentElement.innerHTML='<p style=\\'color: #999; text-align: center; padding: 20px;\\'>📷 Image not available</p>';">
+                    <p style="text-align: center; margin-top: 8px; font-size: 13px; color: #666;">📷 ${imgInfo.title || 'Campus Image'}</p>
+                `;
+                streamingContent.appendChild(imageDiv);
+            }
+
+            if (metadata.follow_up_suggestions && metadata.follow_up_suggestions.length > 0) {
+                const suggestionsDiv = document.createElement('div');
+                suggestionsDiv.className = 'suggestions';
+                metadata.follow_up_suggestions.forEach(suggestion => {
+                    const btn = document.createElement('button');
+                    btn.className = 'suggestion-btn';
+                    btn.textContent = suggestion;
+                    btn.onclick = () => sendQuickMessage(suggestion);
+                    suggestionsDiv.appendChild(btn);
+                });
+                streamingContent.appendChild(suggestionsDiv);
+            }
+
+            if (metadata.inquiry_submitted && !inquiryCreated) {
+                inquiryCreated = true;
+                // showInquiryConfirmation();
+            }
+
+            if (streamingMessageDiv) {
+                streamingMessageDiv.removeAttribute('id');
+            }
+            if (streamingContent) {
+                streamingContent.removeAttribute('id');
+            }
+
+            streamingMessageDiv = null;
+            streamingContent = null;
+            streamingFullResponse = '';
+            scrollToBottom();
+        }
+
+        function failSocketStreaming() {
+            hideTyping();
+            if (streamingMessageDiv) {
+                streamingMessageDiv.remove();
+            }
+            streamingMessageDiv = null;
+            streamingContent = null;
+            streamingFullResponse = '';
+            addMessage('Sorry, I encountered an error. Please try again.', 'ai');
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+
+            // CRITICAL: Ensure sessionId exists before sending
+            if (!sessionId) {
+
+                alert('Session error. Please refresh the page.');
+                return;
+            }
+
+            if (!message || isTyping) {
+
+                return;
+            }
+
+            // Safely hide welcome screen if it exists
+            const welcomeScreen = document.getElementById('welcomeScreen');
+            if (welcomeScreen) {
+                welcomeScreen.style.display = 'none';
+
+            }
+
+            addMessage(message, 'user');
+            input.value = '';
+            showTyping();
+
+
+
+            if (socket && socket.connected) {
+
+                hideTyping();
+                startStreamingMessage();
+                socket.emit('chat_message', {
+                    message: message,
+                    session_id: sessionId,
+                    preferred_language: selectedLanguage
+                });
+                return;
+            }
+
+
+            await sendMessageHttpFallback(message);
+        }
+
+        // Send message with streaming
+        async function sendMessageHttpFallback(message) {
+            try {
+                // Use streaming endpoint
+                const response = await fetch(API_URL + '/chat/stream', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        session_id: sessionId,
+                        preferred_language: selectedLanguage
+                    })
+                });
+
+                if (!response.ok) {
+
+                    const errorText = await response.text();
+
+                    throw new Error(`API Error: ${response.status} - ${response.statusText}`);
+                }
+
+                // Remove typing indicator and prepare for streaming
+                hideTyping();
+
+                // Create message container for streaming
+                const messagesContainer = document.getElementById('chatMessages');
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message ai-message';
+                messageDiv.id = 'streamingMessage';
+
+                const avatar = document.createElement('div');
+                avatar.className = 'message-avatar';
+                avatar.textContent = '🤖';
+
+                const content = document.createElement('div');
+                content.className = 'message-content';
+                content.id = 'streamingContent';
+
+                messageDiv.appendChild(avatar);
+                messageDiv.appendChild(content);
+                messagesContainer.appendChild(messageDiv);
+
+                // Process streaming response
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                let fullResponse = '';
+                let isParsingComplete = false;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n\n');
+                    buffer = lines.pop(); // Keep incomplete line in buffer
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const jsonData = JSON.parse(line.substring(6));
+
+                                if (jsonData.error) {
+                                    content.innerHTML = marked.parse('Sorry, I encountered an error. Please try again.');
+
+                                    break;
+                                }
+
+                                if (!jsonData.done) {
+                                    // Add token to display
+                                    let token = jsonData.token;
+
+                                    // ULTRA-AGGRESSIVE JSON filtering - skip ALL JSON artifacts
+                                    // Check for JSON structure indicators
+                                    const jsonPatterns = [
+                                        '{', '}', '[', ']',
+                                        '"response"', '"extracted_data"', '"ready_to_submit"', '"show_image"',
+                                        '"image_path"', '"title"', '"name"', '"contact"', '"email"',
+                                        '"qualification"', '"interested_course"',
+                                        '```json', '```',
+                                        ': {', ': [', ': "', ': true', ': false', ': null',
+                                        ',"', '",', ':{', '},'
+                                    ];
+
+                                    // Skip token if it contains ANY JSON pattern
+                                    let isJsonArtifact = false;
+                                    for (let pattern of jsonPatterns) {
+                                        if (token.includes(pattern)) {
+                                            isJsonArtifact = true;
+                                            break;
+                                        }
+                                    }
+
+                                    // Also skip tokens that are just whitespace/special chars
+                                    const trimmedToken = token.trim();
+                                    if (isJsonArtifact || !trimmedToken || trimmedToken.length < 2) {
+                                        continue;
+                                    }
+
+                                    // Try to parse token as JSON (in case AI sends JSON wrapped response)
+                                    try {
+                                        const parsedToken = JSON.parse(token);
+                                        if (parsedToken.response) {
+                                            token = parsedToken.response;
+                                        } else {
+                                            // If it's valid JSON but not our expected format, skip it
+                                            continue;
+                                        }
+                                    } catch (e) {
+                                        // Token is not JSON, use as-is (this is good)
+                                    }
+
+                                    fullResponse += token;
+
+                                    // Parse markdown directly during streaming
+                                    content.innerHTML = marked.parse(fullResponse);
+                                    scrollToBottom();
+                                } else {
+                                    // Streaming complete, parse full response with markdown
+                                    isParsingComplete = true;
+                                    const metadata = jsonData.metadata;
+
+                                    // Extract clean response text
+                                    let finalResponse = '';
+                                    let imageData = null;
+
+                                    if (metadata && metadata.response) {
+                                        finalResponse = metadata.response;
+                                        imageData = metadata.show_image || null;
+                                    } else if (fullResponse) {
+                                        // Try to parse fullResponse as JSON to extract show_image
+                                        try {
+                                            const parsed = JSON.parse(fullResponse);
+                                            finalResponse = parsed.response || fullResponse;
+                                            imageData = parsed.show_image || null;
+                                        } catch (e) {
+                                            finalResponse = fullResponse;
+                                        }
+                                    }
+
+                                    // Update content with clean parsed response
+                                    content.innerHTML = marked.parse(finalResponse);
+
+                                    // ✅ SAVE AI RESPONSE TO HISTORY (HTTP FALLBACK PATH)
+                                    saveAIResponseToHistory(finalResponse);
+
+                                    // Show campus image if provided by AI
+                                    if (imageData || (metadata && metadata.show_image)) {
+                                        const imgInfo = imageData || metadata.show_image;
+                                        const imageDiv = document.createElement('div');
+                                        imageDiv.style.cssText = 'margin: 15px 0; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);';
+                                        imageDiv.innerHTML = `
+                                            <img src="${imgInfo.image_path}" 
+                                                 alt="${imgInfo.title || 'Campus Image'}" 
+                                                 style="width: 100%; max-width: 500px; height: auto; display: block; border-radius: 12px;"
+                                                 crossorigin="anonymous"
+                                                 onerror="this.onerror=null; this.parentElement.innerHTML='<p style=\\'color: #999; text-align: center; padding: 20px;\\'>📷 Image not available</p>';">
+                                            <p style="text-align: center; margin-top: 8px; font-size: 13px; color: #666;">📷 ${imgInfo.title || 'Campus Image'}</p>
+                                        `;
+                                        content.appendChild(imageDiv);
+                                    }
+
+                                    // Add suggestions if available
+                                    if (metadata && metadata.follow_up_suggestions && metadata.follow_up_suggestions.length > 0) {
+                                        const suggestionsDiv = document.createElement('div');
+                                        suggestionsDiv.className = 'suggestions';
+                                        metadata.follow_up_suggestions.forEach(suggestion => {
+                                            const btn = document.createElement('button');
+                                            btn.className = 'suggestion-btn';
+                                            btn.textContent = suggestion;
+                                            btn.onclick = () => sendQuickMessage(suggestion);
+                                            suggestionsDiv.appendChild(btn);
+                                        });
+                                        content.appendChild(suggestionsDiv);
+                                    }
+
+                                    // Show inquiry badge if submitted
+                                    if (metadata && metadata.inquiry_submitted && !inquiryCreated) {
+                                        inquiryCreated = true;
+                                        // showInquiryConfirmation();
+                                    }
+                                }
+                            } catch (e) {
+
+                            }
+                        }
+                    }
+                }
+
+                // Remove streaming ID
+                messageDiv.removeAttribute('id');
+                content.removeAttribute('id');
+                scrollToBottom();
+
+            } catch (error) {
+                hideTyping();
+                addMessage('Sorry, I encountered an error. Please try again.', 'ai');
+
+            }
+        }
+
+        // Save AI response to chatHistory (without rendering again)
+        function saveAIResponseToHistory(text) {
+            // Avoid duplicates by checking last message
+            if (chatHistory.length === 0 || chatHistory[chatHistory.length - 1].type !== 'ai' || chatHistory[chatHistory.length - 1].text !== text) {
+                chatHistory.push({ text: text, type: 'ai' });
+                saveChatHistory();  // ✅ Save to localStorage
+            }
+        }
+
+        // Add message to chat
+        function addMessage(text, type, suggestions = null) {
+            const messagesContainer = document.getElementById('chatMessages');
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}-message`;
+
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            avatar.textContent = type === 'user' ? '👤' : '🤖';
+
+            const content = document.createElement('div');
+            content.className = 'message-content';
+
+            // Render markdown for AI messages, plain text for user messages
+            if (type === 'ai') {
+                content.innerHTML = marked.parse(text);
+            } else {
+                content.textContent = text;
+            }
+
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(content);
+
+            // Add suggestions if provided
+            if (suggestions && suggestions.length > 0) {
+                const suggestionsDiv = document.createElement('div');
+                suggestionsDiv.className = 'suggestions';
+                suggestions.forEach(suggestion => {
+                    const btn = document.createElement('button');
+                    btn.className = 'suggestion-btn';
+                    btn.textContent = suggestion;
+                    btn.onclick = () => sendQuickMessage(suggestion);
+                    suggestionsDiv.appendChild(btn);
+                });
+                content.appendChild(suggestionsDiv);
+            }
+
+            messagesContainer.appendChild(messageDiv);
+
+            // Also save to memory for persistence
+            if (!chatHistory.some(m => m.text === text && m.type === type)) {
+                chatHistory.push({ text, type });
+                saveChatHistory();  // ✅ Save to localStorage
+            }
+
+            scrollToBottom();
+        }
+
+        // Show typing indicator
+        function showTyping() {
+            isTyping = true;
+            document.getElementById('sendBtn').disabled = true;
+
+            const messagesContainer = document.getElementById('chatMessages');
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message ai-message';
+            typingDiv.id = 'typingIndicator';
+
+            typingDiv.innerHTML = `
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">
+                    <div class="typing-indicator">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            `;
+
+            messagesContainer.appendChild(typingDiv);
+            scrollToBottom();
+        }
+
+        // Hide typing indicator
+        function hideTyping() {
+            isTyping = false;
+            document.getElementById('sendBtn').disabled = false;
+            const typingIndicator = document.getElementById('typingIndicator');
+            if (typingIndicator) {
+                typingIndicator.remove();
+            }
+        }
+
+        // Quick message
+        function sendQuickMessage(message) {
+            document.getElementById('messageInput').value = message;
+            sendMessage();
+        }
+
+        // Handle Enter key
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        // Scroll to bottom
+        function scrollToBottom() {
+            const messagesContainer = document.getElementById('chatMessages');
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Show inquiry confirmation
+        function showInquiryConfirmation() {
+            const messagesContainer = document.getElementById('chatMessages');
+            const confirmDiv = document.createElement('div');
+            confirmDiv.className = 'message ai-message';
+            confirmDiv.innerHTML = `
+                <div class="message-avatar">✅</div>
+                <div class="message-content">
+                    Your inquiry has been submitted successfully! Our admissions team will contact you soon.
+                    <div class="inquiry-badge">✓ Inquiry Received</div>
+                </div>
+            `;
+            messagesContainer.appendChild(confirmDiv);
+            scrollToBottom();
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            initSession();
+
+            // Add welcome message
+            setTimeout(() => {
+                const welcomeMsg = "नमस्कार! 👋 I'm your Vishwalta College admission assistant. I can help you with course information, admission procedures, and answer any questions you have about Vishwalta College. How can I help you today?";
+                // Don't auto-add, let user start conversation
+            }, 500);
+        });
+
+        // Handle page unload
+        window.addEventListener('beforeunload', () => {
+            // Session cleanup would happen here in production
+        });
+    </script>
+</body>
+
+</html>
