@@ -13,3 +13,4 @@ flask-socketio>=5.3.6
 eventlet>=0.33.3
 python-socketio>=5.9.0
 greenlet>=3.0.0
+python-dotenv>=1.0.0

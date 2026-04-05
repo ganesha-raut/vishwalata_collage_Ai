@@ -1,0 +1,10 @@
+.env
+__pycache__/
+venv/
+.venv/
+env/
+*.pyc
+*.pyo
+*.pyd
+.Python
+college_ai.db

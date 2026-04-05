@@ -5,20 +5,27 @@ Supports: Google Gemini, Ollama (Phi3, Llama, etc)
 
 import os
 import json
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 ACTIVE_MODEL = "groq"  # Options: "gemini", "ollama", "sarvam", or "groq"
 
-SARVAM_API_KEY = "sk_hwuf5jxm_0o368PfYyNAbZhb8kLkS3MiL"
+SARVAM_API_KEY = os.getenv("SARVAM_API_KEY", "")
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "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")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
 GEMINI_API_KEYS = [
-    "AIzaSyDLCWS1_pp_UgNDucj3yIu7lfJW3X68HOs",
-    "AIzaSyBhJ4DGRImoxEH554qqvYGDsnpZNcKm8lg",
-    "AIzaSyC7bIPlzzVCQzhiqMZEi69WHDCkG2D0W6w",
-    "AIzaSyAhpLNWP6uYSjvY8-G7OI28ALS64ODf7uE",  
-    "AIzaSyBGQoFFCv2WuJKkI2fIzpWwfJvrmTTHwtk",
+    os.getenv("GEMINI_API_KEY_1", ""),
+    os.getenv("GEMINI_API_KEY_2", ""),
+    os.getenv("GEMINI_API_KEY_3", ""),
+    os.getenv("GEMINI_API_KEY_4", ""),
+    os.getenv("GEMINI_API_KEY_5", ""),
 ]
+
+# Filter out any empty keys just in case
+GEMINI_API_KEYS = [k for k in GEMINI_API_KEYS if k]
 
 current_key_index = 0
 
