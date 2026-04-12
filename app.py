@@ -425,6 +425,44 @@ def get_session(session_id):
         return jsonify(sessions[session_id])
     return jsonify({'error': 'Session not found'}), 404
 
+def enforce_login_flow(session_id, user_message):
+    session = sessions[session_id]
+    if 'pending_query' not in session:
+        session['pending_query'] = None
+        
+    is_logged_in = bool(session['data'].get('name') and session['data'].get('contact'))
+    
+    if is_logged_in:
+        return True, None, user_message
+        
+    parts = [p.strip() for p in re.split(r'[,;]', user_message.strip()) if p.strip()]
+    if len(parts) >= 2:
+        extracted_name = parts[0]
+        extracted_mobile = re.sub(r'\D', '', parts[1])[-10:] if parts[1] else None
+        
+        if extracted_mobile and len(extracted_mobile) == 10:
+            session['data']['name'] = extracted_name
+            session['data']['contact'] = extracted_mobile
+            if len(parts) >= 3:
+                session['data']['qualification'] = parts[2]
+            
+            if not session.get('inquiry_created'):
+                try:
+                    create_inquiry_from_session(session_id)
+                    session['inquiry_created'] = True
+                except Exception as e:
+                    print('Inquiry creation error:', e)
+            
+            actual_msg = session.get('pending_query') or user_message
+            session['pending_query'] = None
+            return True, None, actual_msg
+        else:
+            session['pending_query'] = user_message
+            return False, "❌ Login error! Mobile number must be 10 digits.\n\nPlease reply with:\nName, Mobile Number", None
+            
+    session['pending_query'] = user_message
+    return False, "❌ Login Required! Please provide your details first:\n\n1️⃣ Name\n2️⃣ Mobile Number\n\n*(Example: Rahul, 9876543210)*", None
+
 @app.route('/api/chat', methods=['POST'])
 @require_api_key
 # core cht mssg fn
@@ -439,6 +477,16 @@ def chat_ai():
         return jsonify({'error': 'Invalid session'}), 400
     
     session = sessions[session_id]
+    
+    is_logged_in, error_prompt, user_message = enforce_login_flow(session_id, user_message)
+    if not is_logged_in:
+        return jsonify({
+            'response': error_prompt,
+            'extracted_data': session['data'],
+            'ready_to_submit': False,
+            'follow_up_suggestions': []
+        })
+    
     session['messages'].append({'role': 'user', 'content': user_message})
     
     try:
@@ -509,6 +557,12 @@ def chat_ai_stream():
     def generate():
         try:
             session = sessions[session_id]
+            is_logged_in, error_prompt, user_message = enforce_login_flow(session_id, user_message)
+            if not is_logged_in:
+                yield f"data: {json.dumps({'token': error_prompt, 'done': False})}\n\n"
+                yield f"data: {json.dumps({'done': True, 'metadata': {'response': error_prompt, 'extracted_data': session['data'], 'ready_to_submit': False, 'follow_up_suggestions': []}})}\n\n"
+                return
+                
             session['messages'].append({'role': 'user', 'content': user_message})
             
             conn = get_db()
@@ -609,82 +663,25 @@ def socket_chat_message(data):
             }
 
         session = sessions[session_id]
-        if 'pending_query' not in session:
-            session['pending_query'] = None
         
-        is_logged_in = session['data'].get('name') and session['data'].get('contact') and session['data'].get('qualification')
-        
+        is_logged_in, error_prompt, user_message = enforce_login_flow(session_id, user_message)
         if not is_logged_in:
-            user_input = user_message.strip()
+            try:
+                emit('chat_token', {'token': error_prompt, 'done': False, 'session_id': session_id})
+                emit('chat_done', {
+                    'done': True,
+                    'metadata': {
+                        'extracted_data': session['data'],
+                        'follow_up_suggestions': [],
+                        'ready_to_submit': False
+                    },
+                    'session_id': session_id
+                })
+            except Exception as e:
+                print(f"Error: {e}")
+            return
             
-            parts = [p.strip() for p in re.split(r'[,;]', user_input) if p.strip()]
-            
-            extracted_name = None
-            extracted_mobile = None
-            extracted_qual = None
-            
-            if len(parts) >= 3:
-                extracted_name = parts[0]
-                extracted_mobile = re.sub(r'\D', '', parts[1])[-10:] if parts[1] else None  # Extract 10 digits
-                extracted_qual = parts[2]
-                
-                if extracted_mobile and len(extracted_mobile) == 10:
-                    session['data']['name'] = extracted_name
-                    session['data']['contact'] = extracted_mobile
-                    session['data']['qualification'] = extracted_qual
-                    
-                    if session.get('pending_query'):
-                        user_message = session['pending_query']
-                        session['pending_query'] = None  # Clear it
-                        print(f"🔄 Restoring pending query: {user_message}")
-                    
-                    session['messages'].append({'role': 'user', 'content': user_message})
-                    is_logged_in = True
-                else:
-                    session['pending_query'] = user_message  # Store it just in case!
-                    error_prompt = """❌ Login error! Mobile number must be 10 digits.
-
-Please send like this:
-name, mobile number, qualification"""
-                    try:
-                        emit('chat_token', {'token': error_prompt, 'done': False, 'session_id': session_id})
-                        emit('chat_done', {
-                            'done': True,
-                            'metadata': {
-                                'extracted_data': session['data'],
-                                'follow_up_suggestions': [],
-                                'ready_to_submit': False
-                            },
-                            'session_id': session_id
-                        })
-                    except Exception as e:
-                        print(f"Error: {e}")
-                    return
-            else:
-                session['pending_query'] = user_message
-                
-                error_prompt = """❌ Occur login error! Login first:
-
-1️⃣ Name
-2️⃣ Mobile Number
-3️⃣ Qualification
-"""
-                try:
-                    emit('chat_token', {'token': error_prompt, 'done': False, 'session_id': session_id})
-                    emit('chat_done', {
-                        'done': True,
-                        'metadata': {
-                            'extracted_data': session['data'],
-                            'follow_up_suggestions': [],
-                            'ready_to_submit': False
-                        },
-                        'session_id': session_id
-                    })
-                except Exception as e:
-                    print(f"Error: {e}")
-                return
-        else:
-            session['messages'].append({'role': 'user', 'content': user_message})
+        session['messages'].append({'role': 'user', 'content': user_message})
 
         conn = get_db()
         courses = conn.execute('SELECT * FROM courses').fetchall()
