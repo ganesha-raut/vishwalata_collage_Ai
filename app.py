@@ -430,21 +430,20 @@ def enforce_login_flow(session_id, user_message):
     if 'pending_query' not in session:
         session['pending_query'] = None
         
-    is_logged_in = bool(session['data'].get('name') and session['data'].get('contact'))
+    is_logged_in = bool(session['data'].get('name') and session['data'].get('contact') and session['data'].get('qualification'))
     
     if is_logged_in:
         return True, None, user_message
         
     parts = [p.strip() for p in re.split(r'[,;]', user_message.strip()) if p.strip()]
-    if len(parts) >= 2:
+    if len(parts) >= 3:
         extracted_name = parts[0]
         extracted_mobile = re.sub(r'\D', '', parts[1])[-10:] if parts[1] else None
         
         if extracted_mobile and len(extracted_mobile) == 10:
             session['data']['name'] = extracted_name
             session['data']['contact'] = extracted_mobile
-            if len(parts) >= 3:
-                session['data']['qualification'] = parts[2]
+            session['data']['qualification'] = parts[2]
             
             if not session.get('inquiry_created'):
                 try:
@@ -458,10 +457,10 @@ def enforce_login_flow(session_id, user_message):
             return True, None, actual_msg
         else:
             session['pending_query'] = user_message
-            return False, "❌ Login error! Mobile number must be 10 digits.\n\nPlease reply with:\nName, Mobile Number", None
+            return False, "❌ Login error! Mobile number must be 10 digits.\n\nPlease reply with:\nName, Mobile Number, Qualification", None
             
     session['pending_query'] = user_message
-    return False, "❌ Login Required! Please provide your details first:\n\n1️⃣ Name\n2️⃣ Mobile Number\n\n*(Example: Rahul, 9876543210)*", None
+    return False, "❌ Login Required! Please provide your details first:\n\n1️⃣ Name\n2️⃣ Mobile Number\n3️⃣ Qualification\n\n*(Example: Rahul, 9876543210, 12th Commerce)*", None
 
 @app.route('/api/chat', methods=['POST'])
 @require_api_key
@@ -1283,10 +1282,9 @@ def finalize_ai_response(session_id, user_message, preferred_language, ai_respon
     next_field = missing_fields[0] if missing_fields else None
 
     clean_response = strip_follow_up_question(ai_response.get('response', ''))
-    follow_up_question = build_follow_up_question(next_field, preferred_language, session['data'], validation_errors) if (next_field or validation_errors) else None
-
-    if follow_up_question:
-        clean_response = f"{clean_response}\n\n<div class=\"highlight-question\">{follow_up_question}</div>" if clean_response else f"<div class=\"highlight-question\">{follow_up_question}</div>"
+    
+    # Intentionally omitted automated follow-up question generation 
+    # to allow the AI to act naturally without a rigid flow format.
 
     ai_response['response'] = clean_response
     ai_response['extracted_data'] = extracted_data
