@@ -840,17 +840,17 @@ def build_ai_context(courses, gallery, companies, students_placed, user_data, pr
     language_instructions = {
         'marathi_english': """🚨 DEFAULT LANGUAGE RULE: User selected MARATHI + ENGLISH mixed mode.
 ⚠️ Reply in a natural Marathi + English mixed style by default. Keep the tone conversational.
-Example: "Amchya college madhe swagat ahe! Khaali dilelya list madhun tumhala kontya field madhe interest ahe?""",
+Example: "Amchya college madhe swagat ahe! Mi tumhala ithe college vishayi sampurna mahiti deil." \n*(ONLY give the requested information, DO NOT formulate questions)*""",
         'english': """🚨 CRITICAL LANGUAGE RULE: User selected ENGLISH from dropdown.
 ⚠️ RESPOND **ONLY IN ENGLISH** - No matter what language user types in!
 ⚠️ DO NOT use any Marathi/Hindi words - 100% PURE ENGLISH ONLY
-Example: "Welcome to our college! From the list below, which field are you interested in?""",
+Example: "Welcome to our college! I can provide you with all the details you need." \n*(ONLY give the requested information, DO NOT formulate questions)*""",
         'marathi': """🚨 अतिशय महत्त्वाचं: User ने मराठी language निवडली आहे.
 ⚠️ फक्त मराठीतच उत्तर द्या - User कोणत्याही language मध्ये लिहिलं तरी
-Example: "आमच्या कॉलेजमध्ये स्वागत आहे! खाली दिलेल्या लिस्टमधून तुम्हाला कोणत्या क्षेत्रात रस आहे?""",
+Example: "आमच्या कॉलेजमध्ये स्वागत आहे! मी तुम्हाला हवी असलेली सर्व माहिती देऊ शकेन." \n*(ONLY give the requested information, DO NOT formulate questions)*""",
         'hindi': """🚨 बहुत जरूरी: User ने हिंदी language select की है.
 ⚠️ सिर्फ हिंदी में जवाब दें - User चाहे किसी भी language में लिखे
-Example: "हमारे कॉलेज में स्वागत है! कृपया बताएं कि आपकी रुचि किस क्षेत्र में है?""",
+Example: "हमारे कॉलेज में स्वागत है! मैं आपको सारी जानकारी प्रदान करूँगा." \n*(ONLY give the requested information, DO NOT formulate questions)*""",
         'auto': 'AUTO MODE: Detect user language automatically and respond in SAME language (Marathi/English/Hindi/Mixed). Match user\'s language choice.'
     }
     
@@ -895,9 +895,9 @@ CRITICAL RULES:
    - **Eligibility:** 
    - **Top Recruiters:** (Mention companies from DB)
    - **Our Student Placements:** (ONLY IF 'Specific Course Placements' are provided in python variables above, mention them. Example: "Amche student Ganesh yanch placement...". IF NO PLACEMENTS DATA IS PROVIDED, DO NOT USE PLACEHOLDERS LIKE [Name] or [Company]! Just say 'Contact administration for latest placements'.)
-4. DO NOT write long essays. NEITHER ASK ANY QUESTIONS NOR END WITH A QUESTION MARK! The system will automatically append the next conversational question for you.
+4. DO NOT write long essays. ONLY directly state the requested information. DO NOT end your text with a question mark as the system automatically appends conversational questions at the end!
 5. IMAGES: If user asks for campus/library/etc, use `show_image` in JSON. You MUST use the EXACT `image_path` provided in the Gallery list. Do NOT invent image paths or titles.
-6. IF the user is asking from a template or prompt directly right after giving details, GREET THEM by Name, use the above placement style to show off their requested course, and seamlessly continue!
+6. IF the user is asking from a template or prompt directly right after giving details, GREET THEM by Name, answer their question straightforwardly, and seamlessly stop!
 7. NEVER ask for Name, Mobile, Qualification, or Interest if already present in USER DATA.
 
 STRICT OUTPUT FORMAT:
